@@ -1,0 +1,52 @@
+#include "p16F628a.inc" ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
+ __CONFIG _FOSC_INTOSCCLK & _WDTE_OFF & _PWRTE_OFF & _MCLRE_OFF & _BOREN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF
+ ;configuracion del dispositivo en OFF y la frecuencia de oscilador
+ ;es la del "reloj del oscilador interno" (INTOSCCLK)
+ 
+RES_VECT  CODE    0x0000            ; processor reset vector
+    GOTO    START                   ; go to beginning of program
+
+; TODO ADD INTERRUPTS HERE IF USED
+
+MAIN_PROG CODE; let linker place main program
+ 
+ a equ 0x30
+ c equ 0x31
+
+START		;inicio del programa
+
+    
+    MOVLW 0X07	    ;Apagar comparadores
+    MOVWF CMCON
+    BCF STATUS, RP1	;Cambiar al banco 1 apagado el RP1
+    BSF STATUS, RP0	;Y encendido el RP0
+    MOVLW b'00000000'	;Establecer puerto B como salida (los 8 bits del puerto)
+    MOVWF TRISB
+    BCF STATUS,RP0	;Regresar al banco 0 apagando el RP0
+    GOTO INICIO
+    
+    
+ INICIO
+	MOVFW PORTA 
+	MOVWF a
+	bcf a,4
+	bcf a,5
+	bcf a,6
+	bcf a,7
+	
+	MOVWF c
+	BCF c,0
+	BCF c,1
+	BCF c,2
+	BCF c,3
+	swapf c
+	MOVLW d'0'
+	
+OPERACION
+	ADDWF a,0
+	DECFSZ c
+	GOTO OPERACION
+	MOVWF PORTB
+GOTO INICIO    
+
+END
