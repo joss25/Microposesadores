@@ -1,0 +1,87 @@
+#include "p16F628a.inc"    ;incluir librerias relacionadas con el dispositivo
+ __CONFIG _FOSC_INTOSCCLK & _WDTE_OFF & _PWRTE_OFF & _MCLRE_OFF & _BOREN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF    
+;configuración del dispositivo todo en OFF y la frecuencia de oscilador
+;es la del "reloj del oscilador interno" (INTOSCCLK)     
+RES_VECT  CODE    0x0000            ; processor reset vector
+    GOTO    START                   ; go to beginning of program
+; TODO ADD INTERRUPTS HERE IF USED
+MAIN_PROG CODE                      ; let linker place main program
+
+r equ 0x30
+l equ 0x31
+c equ 0x32
+m equ 0x33
+a equ 0x34
+
+START
+    MOVLW 0x07 ;Apagar comparadores
+    MOVWF CMCON
+    BCF STATUS, RP1 ;Cambiar al banco 1
+    BSF STATUS, RP0
+    MOVLW b'11111111' ;Establecer puerto B como salida (los 8 bits del puerto)
+    MOVWF TRISA
+    MOVLW b'00000000' ;Establecer puerto B como salida (los 8 bits del puerto)
+    MOVWF TRISB
+    BCF STATUS, RP0 ;Regresar al banco 0
+    GOTO INICIO
+
+INICIO
+    MOVFW PORTA
+    MOVWF l
+    MOVLW d'0'
+    MOVWF c
+    MOVFW l
+    XORLW d'0'
+    MOVWF a
+    BTFSC a,0 
+    GOTO raiz
+    BTFSC a,1
+    GOTO raiz
+    BTFSC a,2
+    GOTO raiz
+    BTFSC a,3
+    GOTO raiz
+    BTFSC a,4
+    GOTO raiz
+    BTFSC a,5
+    GOTO raiz
+    BTFSC a,6
+    GOTO raiz
+    BTFSC a,7
+    GOTO raiz
+    GOTO impresion
+    
+raiz
+    INCF c,1
+    MOVFW c
+    MOVWF m
+    MOVLW d'0'
+    multiplicacion
+    ADDWF c,0
+    DECFSZ m
+    GOTO multiplicacion
+    MOVWF r
+    MOVFW l
+    XORWF r,0
+    MOVWF a
+    BTFSC a,0
+    GOTO raiz
+    BTFSC a,1
+    GOTO raiz
+    BTFSC a,2
+    GOTO raiz
+    BTFSC a,3
+    GOTO raiz
+    BTFSC a,4
+    GOTO raiz
+    BTFSC a,5
+    GOTO raiz
+    BTFSC a,6
+    GOTO raiz
+    BTFSC a,7
+    GOTO raiz
+    impresion
+    MOVFW c 
+    MOVWF PORTB 
+    
+END
