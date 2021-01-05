@@ -1,0 +1,252 @@
+#include "p16F887.inc"   ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
+ 	__CONFIG	_CONFIG1,	_INTRC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_OFF & _MCLRE_ON & _CP_OFF & _CPD_OFF & _BOR_OFF & _IESO_ON & _FCMEN_ON & _LVP_OFF 
+ 	__CONFIG	_CONFIG2,	_BOR40V & _WRT_OFF
+
+contador equ 0x20
+i equ 0x21
+j equ 0x22
+anlg equ 0x23
+centenas equ 0x24
+decenas equ 0x25
+unidades equ 0x26
+numero equ 0x28
+ 
+RES_VECT CODE 0x0000; vector de reinicio del procesador
+    GOTO START; ir al inicio del programa
+
+MAIN_PROG CODE; deja que el enlazador coloque el programa principal
+
+START
+
+INITIATION
+
+    BANKSEL ANSEL;
+    MOVLW b'00000001'
+    MOVWF ANSEL; Analógico A0
+    CLRF ANSELH
+    BANKSEL TRISA;
+    MOVLW b'11111111'
+    MOVWF TRISA; Configuración del PUERTO A como entrada
+    CLRF TRISB; Configuración del PUERTO B como salida (para mostrar la conversión ADC con LED)
+    CLRF TRISD; Configuración de PORT D como salida (para mostrar la conversión ADC con LED)
+    CLRF TRISC
+     
+    MOVLW b'10000000'; Formato de resultado A / D (justificado a la derecha)
+    MOVWF ADCON1
+ 
+ 
+    BCF STATUS, RP0; Selección del banco de memoria 0
+    CLRF PORTB; Estableciendo PORTB en "0000000"
+
+    MOVLW b'11000001'; Selección de reloj de conversión (11: oscilador interno), canal analógico (AN0), conversión A / D no en curso
+    MOVWF ADCON0 
+    
+    CLRF PORTB
+    CLRF PORTD 
+    BCF PORTC, 1
+    BCF PORTC, 0
+    
+INITLCD; -------------------------- INIT LCD
+    BCF PORTC, 0; restablecer
+    MOVLW 0x01
+    MOVWF PORTD
+    
+    BSF PORTC, 1; exec
+    CALL time
+    BCF PORTC, 1
+    CALL time
+    
+    MOVLW 0x0C; primera línea
+    MOVWF PORTD
+    
+    BSF PORTC, 1; exec
+    CALL time
+    BCF PORTC, 1
+    CALL time
+         
+    MOVLW 0x3C; modo cursor
+    MOVWF PORTD
+    
+    BSF PORTC, 1; exec
+    CALL time
+    BCF PORTC, 1
+    CALL time ;---------------------------------------
+    
+    ; ---------- Temperatura
+    BCF PORTC, 0; modo de comando
+    CALL time
+    
+    MOVLW 0x80; Posición LCD 
+    MOVWF PORTD
+    CALL exec
+    
+    BSF PORTC, 0; modo de datos
+    CALL time
+
+    MOVLW 'T'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'e'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'm'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'p'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'e'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'r'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'a'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 't'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'u'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'r'
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'a'
+    MOVWF PORTD
+    CALL exec
+    MOVLW ':'
+    MOVWF PORTD
+    CALL exec
+    ; ----------------------------------
+    
+delayINIT 
+    MOVLW d'19'
+    MOVWF contador
+
+delayLOOP 
+    DECFSZ contador, f 
+    GOTO delayLOOP 
+ 
+    BSF ADCON0,1   ; Establecer conversión A / D en curso
+
+ADC_CONVERT 
+    BTFSC ADCON0,1
+    GOTO ADC_CONVERT 
+     
+    banksel ADRESL ; Seleccione el banco donde reside la ADRESL
+    MOVF ADRESL, W ; Mover el resultado de ADRESL al registro de trabajo
+    banksel ADRESH ; Seleccione el banco donde residen PORTB, PORTD y ADRESH
+    
+    MOVWF anlg
+    MOVLW 2
+    CLRF numero
+division
+    INCF numero, f
+    SUBWF anlg, f
+    BTFSC STATUS, C
+    GOTO division
+    DECF numero, f
+    MOVFW numero
+    MOVWF anlg  
+    
+    MOVWF PORTB
+
+    CLRF centenas
+    CLRF decenas
+    CLRF unidades
+centenas1
+    movlw d'100'
+    subwf anlg, W
+    btfss STATUS, C
+    goto decenas1
+    movwf anlg
+    incf centenas, 1
+    goto centenas1
+decenas1
+    movlw d'10'
+    subwf anlg, W
+    btfss STATUS, C
+    goto unidades1
+    movwf anlg
+    incf decenas, 1
+    goto decenas1
+unidades1
+    movf anlg, W
+    movwf unidades
+	   
+ASCII
+    movlw h'30' 
+    iorwf unidades, f      
+    iorwf decenas, f
+    iorwf centenas, f   
+    
+    BCF PORTC, 0
+    CALL time
+    
+    MOVLW 0xC0
+    MOVWF PORTD
+    CALL exec
+    
+    BSF PORTC, 0
+    CALL time
+
+    MOVLW ' '
+    MOVWF PORTD
+    CALL exec
+    MOVLW ' '
+    MOVWF PORTD
+    CALL exec
+    MOVLW ' '
+    MOVWF PORTD
+    CALL exec
+    MOVLW ' '
+    MOVWF PORTD
+    CALL exec
+    MOVLW '"'
+    MOVWF PORTD
+    CALL exec
+    MOVFW centenas
+    MOVWF PORTD
+    CALL exec
+    MOVFW decenas
+    MOVWF PORTD
+    CALL exec
+    MOVFW unidades
+    MOVWF PORTD
+    CALL exec
+    MOVLW b'11011111'	;°
+    MOVWF PORTD
+    CALL exec
+    MOVLW 'C'
+    MOVWF PORTD
+    CALL exec
+    MOVLW '"'
+    MOVWF PORTD
+    CALL exec
+    ; ------------------------------------------------- ---
+    GOTO delayINIT
+; ///////////////////////////////////////////////// //////////////////////////////////////////////////// ///////////////
+    
+exec
+    BSF PORTC, 1; exec
+    CALL time
+    BCF PORTC, 1
+    CALL time
+    RETURN
+    
+time
+    CLRF i
+    MOVLW d'10'
+    MOVWF j
+ciclo    
+    MOVLW d'80'
+    MOVWF i
+    DECFSZ i
+    GOTO $ -1
+    DECFSZ j
+    GOTO ciclo
+    RETURN
+    
+    END
